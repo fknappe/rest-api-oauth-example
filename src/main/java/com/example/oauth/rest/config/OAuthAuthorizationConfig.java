@@ -1,7 +1,7 @@
 package com.example.oauth.rest.config;
 
+import com.example.oauth.rest.services.MongoTokenStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,28 +21,56 @@ public class OAuthAuthorizationConfig extends AuthorizationServerConfigurerAdapt
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    @Value("${oauth.tokenTimeout:3600}")
-    private int expiration;
-
     @Bean
-    public TokenStore tokenStore() {
+    public TokenStore mongoTokenStore() {
+        return new MongoTokenStore();
+    }
+
+    public TokenStore inMemoryTokenStore() {
         return new InMemoryTokenStore();
     }
 
+    /*@Bean
+    public ClientDetailsService clientDetailsService() {
+        return new MongoClientDetailsService();
+    }
+
+    @Bean
+    protected UserDetailsService userDetailsService() {
+        return new MongoUserDetailsServices();
+    }
+
+    @Bean
+    @Primary
+    public DefaultTokenServices tokenServices() {
+        DefaultTokenServices defaultTokenServices = new DefaultTokenServices();
+        defaultTokenServices.setTokenStore(mongoTokenStore());
+        defaultTokenServices.setSupportRefreshToken(true);
+        return defaultTokenServices;
+    }*/
+
     @Override
     public void configure(AuthorizationServerEndpointsConfigurer configurer) throws Exception {
-        configurer.tokenStore(tokenStore()).authenticationManager(authenticationManager);
+        configurer.tokenStore(inMemoryTokenStore())
+                .authenticationManager(authenticationManager);
+
+        /*configurer.tokenServices(tokenServices())
+                .userDetailsService(userDetailsService())
+                .authenticationManager(authenticationManager)
+                .allowedTokenEndpointRequestMethods(HttpMethod.POST)
+                .setClientDetailsService(clientDetailsService());*/
     }
 
     @Override
     public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
         clients.inMemory()
-                .withClient("supertrustedclientid")
-                .secret("supertrustedclientsecret")
-                .authorizedGrantTypes("client_credentials", "refresh_token")
+                .withClient("web-client")
+                .secret("web-client-secret")
+                .resourceIds("greeting")
+                .authorizedGrantTypes("client_credentials", "password", "refresh_token")
                 .authorities("ROLE_CLIENT")
-                .accessTokenValiditySeconds(expiration)
-                .refreshTokenValiditySeconds(expiration)
+                .accessTokenValiditySeconds(60)
+                .refreshTokenValiditySeconds(14400)
                 .scopes("read", "write", "trust");
     }
 
